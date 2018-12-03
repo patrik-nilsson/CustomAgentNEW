@@ -1,4 +1,19 @@
 starting ...
-Status Connected          4820772198
-Data  GameReadyToStart    4820772316
-Data  NewTurn             4820772324
+Status Connected          5077863514
+Data  GameReadyToStart    5077863916
+Data  NewTurn             5077863923
+Data  PlayerMove          5077864032
+Data  NewTurn             5077864033
+Data  PlayerMove          5077864131
+Data  NewTurn             5077864131
+Data  PlayerMove          5077864248
+Data  NewTurn             5077864248
+Data  PlayerMove          5077864349
+Data  NewTurn             5077864349
+Data  PlayerMove          5077864465
+Data  NewTurn             5077864465
+Data  PlayerMove          5077864565
+Data  NewTurn             5077864565
+Data  PlayerMove          5077864681
+Data  NewTurn             5077864681
+CloseLog

@@ -8,16 +8,16 @@ namespace Quoridor.AI
 {
     class Node
     {
-        public int distanceFromStart;
-        public int distanceToGoal;
-        public int weight;
-        public Point Position;
-        public Node(int distanceFromStart, int distanceToGoal, Point Position)
+        public int weight { get; private set; }
+        public Point position { get; private set; }
+        public int stepsFromStart { get; private set; }
+        public int stepsToGoal { get; private set; }
+        public Node(int stepsFromStart, int stepsToGoal, Point position)
         {
-            this.distanceFromStart = distanceFromStart;
-            this.distanceToGoal = distanceToGoal;
-            weight = distanceFromStart + distanceToGoal;
-            this.Position = Position;
+            weight = stepsFromStart + stepsToGoal;
+            this.position = position;
+            this.stepsFromStart = stepsFromStart;
+            this.stepsToGoal = stepsToGoal;
         }
     }
 }

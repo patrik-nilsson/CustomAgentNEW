@@ -6,24 +6,17 @@ namespace Quoridor.AI
 {
     class CustomAgent : Agent
     {
-        GameData data;
-        LinkedList<MoveAction> moves = new LinkedList<MoveAction>();
-        List<LinkedList<Node>> paths = new List<LinkedList<Node>>();
-        Point blocked;
-        Point currentPosition;
-        bool initalized = false;
-        int goalPosition;
-        int optimalDirection;
-        int knownNumberOfEnemyWalls = 1000;
-        int distanceToGoal;
-        int distanceFromStart;
-        int currentPath;
-        int currentWeight;
-        int forward;
-        int backward;
-        int rightward;
-        int leftward;
+        string direction;
+        List<LinkedList<Node>> paths;
+        List<MoveAction> movelist;
+        Point optimalDirection;
+        Point wrongDirection;
+        Point left;
+        Point right;
         int index;
+        int enemyWalls;
+        bool initialized = false;
+        int goalPosition;
 
         public static void Main()
         {
@@ -32,264 +25,350 @@ namespace Quoridor.AI
 
         public override Action DoAction(GameData status)
         {
-            if (!initalized)
+            if (!initialized)
             {
-                data = status;
-                Initalize();
-                initalized = true;
+                Initialize(status);
+                initialized = true;
             }
-            if (moves.Count > 0)
+            if (movelist.Count > 0)
             {
-                moves.RemoveFirst();
+                movelist.RemoveAt(movelist.Count - 1);
             }
 
             foreach (Player p in status.Players)
             {
                 if (p != status.Self)
                 {
-                    blocked = p.Position;
-                    if (ThereIsBlocker())
+                    if (movelist.Count < 1)
                     {
-                        knownNumberOfEnemyWalls = p.NumberOfWalls;
-                        moves.Clear();
-                        paths.Clear();
-                        distanceFromStart = 1;
-                        FindPath("none");
+                        CreatePath(status);
                     }
-                    else if (p.NumberOfWalls < knownNumberOfEnemyWalls)
+                    else if (enemyWalls > p.NumberOfWalls)
                     {
-                        knownNumberOfEnemyWalls = p.NumberOfWalls;
-                        if (ThereIsWall())
+                        enemyWalls = p.NumberOfWalls;
+                        CreatePath(status);
+                    }
+                    else
+                    {
+                        foreach (MoveAction n in movelist)
                         {
-                            moves.Clear();
-                            paths.Clear();
-                            distanceFromStart = 1;
-                            FindPath("none");
+                            if (status.Tiles[n.Column, n.Row].IsOccupied)
+                            {
+                                CreatePath(status);
+                                break;
+                            }
                         }
                     }
                 }
             }
-            return moves.First();
+
+            return movelist[movelist.Count - 1];
         }
 
-        private void FindPath(string direction)
+        private void CreatePath(GameData status)
         {
-            bool pathAddedToCurrentPath = false;
-            if (direction == "none")
-            {
-                DrawInitialPath();
-                FindLowestWeight();
-            }
-            if (currentWeight < paths[currentPath].First.Value.weight)
-            {
-                FindLowestWeight();
-                //direction = getDirection();
-            }
-            distanceFromStart = paths[currentPath].First.Value.distanceFromStart;
-            currentPosition = paths[currentPath].First.Value.Position;
-
-            if (direction != "backward" && !WallBetween(currentPosition, new Point(currentPosition.X, currentPosition.Y + optimalDirection)) && IsWithinGameBoard(currentPosition.X, currentPosition.Y + optimalDirection))
-            {
-                distanceFromStart++;
-                paths[currentPath].AddFirst(new Node(distanceFromStart, Math.Abs(goalPosition - data.Self.Position.Y), new Point(currentPosition.X, currentPosition.Y + optimalDirection)));
-                pathAddedToCurrentPath = true;
-            }
-            else
-            {
-                paths.RemoveAt(currentPath);
-            }
-
-            //if (direction != "left" && !WallBetween(currentPosition, new Point(currentPosition.X + 1, currentPosition.Y)) && IsWithinGameBoard(currentPosition.X + 1, currentPosition.Y))
-            //{
-            //    if (pathAddedToCurrentPath)
-            //    {
-            //        LinkedList<Node> temp = paths[currentPath];
-            //        temp.AddFirst(new Node(distanceFromStart, Math.Abs(goalPosition - data.Self.Position.Y), new Point(currentPosition.X + 1, currentPosition.Y)));
-            //        paths.Add(temp);
-            //    }
-            //    else
-            //    {
-            //        distanceFromStart++;
-            //        paths[currentPath].AddFirst(new Node(distanceFromStart, Math.Abs(goalPosition - data.Self.Position.Y), new Point(currentPosition.X + 1, currentPosition.Y)));
-            //        pathAddedToCurrentPath = true;
-            //    }
-            //}
-
-            //if (direction != "right" && !WallBetween(currentPosition, new Point(currentPosition.X - 1, currentPosition.Y)) && IsWithinGameBoard(currentPosition.X - 1, currentPosition.Y))
-            //{
-            //    if (pathAddedToCurrentPath)
-            //    {
-            //        LinkedList<Node> temp = paths[currentPath];
-            //        temp.AddFirst(new Node(distanceFromStart, Math.Abs(goalPosition - data.Self.Position.Y), data.Self.Position));
-            //        paths.Add(temp);
-            //    }
-            //    else
-            //    {
-            //        distanceFromStart++;
-            //        paths[currentPath].AddFirst(new Node(distanceFromStart, Math.Abs(goalPosition - data.Self.Position.Y), data.Self.Position));
-            //        pathAddedToCurrentPath = true;
-            //    }
-            //}
-
-            //if (direction != "forward" && !WallBetween(currentPosition, new Point(currentPosition.X, currentPosition.Y - optimalDirection)) && IsWithinGameBoard(currentPosition.X, currentPosition.Y - optimalDirection))
-            //{
-            //    if (pathAddedToCurrentPath)
-            //    {
-            //        LinkedList<Node> temp = paths[currentPath];
-            //        temp.AddFirst(new Node(distanceFromStart, Math.Abs(goalPosition - data.Self.Position.Y), new Point(currentPosition.X, currentPosition.Y - optimalDirection)));
-            //        paths.Add(temp);
-            //    }
-            //    else
-            //    {
-            //        distanceFromStart++;
-            //        paths[currentPath].AddFirst(new Node(distanceFromStart, Math.Abs(goalPosition - data.Self.Position.Y), new Point(currentPosition.X, currentPosition.Y - optimalDirection)));
-            //        pathAddedToCurrentPath = true;
-            //    }
-            //}
-
-            if (currentPosition.Y == goalPosition)
-            {
-                foreach (Node n in paths[currentPath])
-                {
-                    moves.AddFirst(new MoveAction(n.Position.X, n.Position.Y));
-                }
-                return;
-                //Put nodes into moveaction list.
-            }
-            else
-            {
-                FindPath("unknown");
-            }
-            return;
+            movelist.Clear();
+            index = 0;
+            DrawInitialPaths(status);
+            FindPath(status);
+            paths.Clear();
         }
 
-        private bool ThereIsWall()
+        private void DrawInitialPaths(GameData status)
         {
-            if (paths.Count == 0)
+            if (IsWithinGameBoard(status.Self.Position.X, status.Self.Position.Y + optimalDirection.Y, status) && !status.Tiles[status.Self.Position.X, status.Self.Position.Y + optimalDirection.Y].IsOccupied)
             {
-                return true;
-            }
-            if (WallBetween(data.Self.Position, paths[currentPath].ElementAt(0).Position))
-            {
-                return true;
-            }
-            for (int x = 0; x < paths[currentPath].Count - 1; x++)
-            {
-                if (WallBetween(paths[currentPath].ElementAt(x).Position, paths[currentPath].ElementAt(x + 1).Position))
+                if (!WallBetween(status.Self.Position, new Point(status.Self.Position.X + optimalDirection.X, status.Self.Position.Y + optimalDirection.Y), status))
                 {
-                    return true;
+                    paths.Add(new LinkedList<Node>());
+                    paths[index].AddFirst(new Node(1, Math.Abs(status.Self.Position.Y + optimalDirection.Y - goalPosition), new Point(status.Self.Position.X, status.Self.Position.Y + optimalDirection.Y)));
+                    index++;
                 }
             }
-            return false;
-        }
-
-        private bool ThereIsBlocker()
-        {
-            if (paths.Count == 0)
+            if (IsWithinGameBoard(status.Self.Position.X, status.Self.Position.Y + wrongDirection.Y, status) && !status.Tiles[status.Self.Position.X, status.Self.Position.Y + wrongDirection.Y].IsOccupied)
             {
-                return true;
-            }
-            foreach (MoveAction p in moves)
-            {
-                if (data.Tiles[p.Column, p.Row].IsOccupied)
+                if (!WallBetween(status.Self.Position, new Point(status.Self.Position.X + wrongDirection.X, status.Self.Position.Y + wrongDirection.Y), status))
                 {
-                    return true;
+                    paths.Add(new LinkedList<Node>());
+                    paths[index].AddFirst(new Node(1, Math.Abs(status.Self.Position.Y + wrongDirection.Y - goalPosition), new Point(status.Self.Position.X, status.Self.Position.Y + wrongDirection.Y)));
+                    index++;
                 }
             }
-            return false;
-        }
-
-        private void DrawInitialPath()
-        {
-            index = 0;  
-            if (!WallBetween(data.Self.Position, new Point(data.Self.Position.X, forward)) && IsWithinGameBoard(data.Self.Position.X, forward))
+            if (IsWithinGameBoard(status.Self.Position.X + left.X, status.Self.Position.Y, status) && !status.Tiles[status.Self.Position.X + left.X, status.Self.Position.Y].IsOccupied)
             {
-                paths.Add(new LinkedList<Node>());
-                paths[index].AddFirst(new Node(distanceFromStart, Math.Abs(goalPosition - forward), new Point(data.Self.Position.X, forward)));
-                index++;
+                if (!WallBetween(status.Self.Position, new Point(status.Self.Position.X + left.X, status.Self.Position.Y), status))
+                {
+                    paths.Add(new LinkedList<Node>());
+                    paths[index].AddFirst(new Node(1, Math.Abs(status.Self.Position.Y - goalPosition), new Point(status.Self.Position.X + left.X, status.Self.Position.Y)));
+                    index++;
+                }
             }
-            if (!WallBetween(data.Self.Position, new Point(rightward, data.Self.Position.Y)) && IsWithinGameBoard(rightward, data.Self.Position.Y))
+            if (IsWithinGameBoard(status.Self.Position.X + right.X, status.Self.Position.Y, status) && !status.Tiles[status.Self.Position.X + right.X, status.Self.Position.Y].IsOccupied)
             {
-                paths.Add(new LinkedList<Node>());
-                paths[index].AddFirst(new Node(distanceFromStart, Math.Abs(goalPosition - data.Self.Position.Y), new Point(rightward, data.Self.Position.Y)));
-                index++;
-            }
-            if (!WallBetween(data.Self.Position, new Point(leftward, data.Self.Position.Y)) && IsWithinGameBoard(leftward, data.Self.Position.Y))
-            {
-                paths.Add(new LinkedList<Node>());
-                paths[index].AddFirst(new Node(distanceFromStart, Math.Abs(goalPosition - data.Self.Position.Y), new Point(leftward, data.Self.Position.Y)));
-                index++;
-            }
-            if (!WallBetween(data.Self.Position, new Point(data.Self.Position.X, backward)) && IsWithinGameBoard(data.Self.Position.X, backward))
-            {
-                paths.Add(new LinkedList<Node>());
-                paths[index].AddFirst(new Node(distanceFromStart, Math.Abs(goalPosition - backward), new Point(data.Self.Position.X, backward)));
-                index++;
+                if (!WallBetween(status.Self.Position, new Point(status.Self.Position.X + right.X, status.Self.Position.Y), status))
+                {
+                    paths.Add(new LinkedList<Node>());
+                    paths[index].AddFirst(new Node(1, Math.Abs(status.Self.Position.Y - goalPosition), new Point(status.Self.Position.X + right.X, status.Self.Position.Y)));
+                    index++;
+                }
             }
         }
-
-        private void FindLowestWeight()
+        public int GetLowestWeight(GameData status)
         {
             int x = 0;
             for (int i = 0; i < paths.Count; i++)
             {
-                for (int j = i + 1; j < paths.Count; j++)
+                if (paths[x].First.Value.weight > paths[i].First.Value.weight)
                 {
-                    if (paths[i].First.Value.weight < paths[j].First.Value.weight)
+                    x = i;
+                }
+            }
+            return x;
+        }
+
+        public string GetDirection(Point directionValue)
+        {
+            if (directionValue.Y == optimalDirection.Y)
+            {
+                return "forward";
+            }
+            if (directionValue.Y == wrongDirection.Y)
+            {
+                return "back";
+            }
+            if (directionValue.X == -1)
+            {
+                return "left";
+            }
+            if (directionValue.X == 1)
+            {
+                return "right";
+            }
+            return "none?";
+        }
+
+        private void DeleteUnnecessary()
+        {
+            for(int i = 0; i < paths.Count; i++)
+            {
+                bool breakout = false;
+                foreach(Node n in paths[i])
+                {
+                    foreach(Node m in paths[i])
                     {
-                        x = i;
+                        if(m != paths[i].First.Value)
+                        {
+                            if(n.position == m.position)
+                            {
+                                paths.RemoveAt(i);
+                                breakout = true;
+                                index--;
+                            }
+                        }
+                        if (breakout)
+                            break;
+                    }
+                    if (breakout)
+                        break;
+                }
+            }
+        }
+
+        public void FindPath(GameData status)
+        {
+          //  DeleteUnnecessary();
+            int currentPath = GetLowestWeight(status);
+            Node toSkip = new Node(0, 0, new Point());
+            if (paths[currentPath].Count > 1)
+            {
+                Point directionValue = new Point(paths[currentPath].First.Value.position.X - paths[currentPath].First.Next.Value.position.X, paths[currentPath].First.Value.position.Y - paths[currentPath].First.Next.Value.position.Y);
+                direction = GetDirection(directionValue);
+            }
+            else
+            {
+                direction = "none";
+            }
+
+            bool firstStepAdded = false;
+            if (direction != "back" && IsWithinGameBoard(paths[currentPath].First.Value.position.X, paths[currentPath].First.Value.position.Y + optimalDirection.Y, status))
+            {
+                if (!WallBetween(paths[currentPath].First.Value.position, new Point(paths[currentPath].First.Value.position.X, paths[currentPath].First.Value.position.Y + optimalDirection.Y), status) && !status.Tiles[paths[currentPath].First.Value.position.X, paths[currentPath].First.Value.position.Y + optimalDirection.Y].IsOccupied)
+                {
+                    toSkip = new Node(paths[currentPath].First.Value.stepsFromStart + 1, Math.Abs(paths[currentPath].First.Value.position.Y + optimalDirection.Y - goalPosition), new Point(paths[currentPath].First.Value.position.X, paths[currentPath].First.Value.position.Y + optimalDirection.Y));
+                    paths[currentPath].AddFirst(toSkip);
+                    firstStepAdded = true;
+                }
+            }
+            if (direction != "right" && IsWithinGameBoard(paths[currentPath].First.Value.position.X + left.X, paths[currentPath].First.Value.position.Y, status))
+            {
+                if (!WallBetween(paths[currentPath].First.Value.position, new Point(paths[currentPath].First.Value.position.X + left.X, paths[currentPath].First.Value.position.Y), status) && !status.Tiles[paths[currentPath].First.Value.position.X + left.X, paths[currentPath].First.Value.position.Y].IsOccupied)
+                {
+                    if (!firstStepAdded)
+                    {
+                        toSkip = new Node(paths[currentPath].First.Value.stepsFromStart + 1, Math.Abs(paths[currentPath].First.Value.position.Y - goalPosition), new Point(paths[currentPath].First.Value.position.X + left.X, paths[currentPath].First.Value.position.Y));
+                        paths[currentPath].AddFirst(toSkip);
+                        firstStepAdded = true;
+                    }
+                    else
+                    {
+                        paths.Add(new LinkedList<Node>());
+                        foreach (Node n in paths[currentPath])
+                        {
+                            paths[index].AddLast(n);
+                        }
+                        paths[index].AddFirst(new Node(paths[currentPath].First.Value.stepsFromStart + 1, Math.Abs(paths[currentPath].First.Value.position.Y - goalPosition), new Point(paths[currentPath].First.Value.position.X + left.X, paths[currentPath].First.Value.position.Y)));
+                        index++;
                     }
                 }
             }
-            currentPath = x;
-            currentWeight = paths[x].First.Value.weight;
-        }
-
-        private bool WallBetween(Point start, Point end)
-        {
-            //if (start.X == end.X)
-            //{
-            //    int num = Math.Min(start.Y, end.Y);
-            //    return data.HorizontalWall[start.X, num];
-            //}
-            //if (start.Y == end.Y)
-            //{
-            //    int num2 = Math.Min(start.X, end.X);
-            //    return data.VerticalWall[num2, start.Y];
-            //}
-            //return true;
-            return false;
-        }
-
-        protected bool IsWithinGameBoard(int column, int row)
-        {
-            if (0 <= column && column < data.Tiles.GetLength(0) && 0 <= row)
+            if (direction != "left" && IsWithinGameBoard(paths[currentPath].First.Value.position.X + right.X, paths[currentPath].First.Value.position.Y, status))
             {
-                return row < data.Tiles.GetLength(1);
+                if (!WallBetween(paths[currentPath].First.Value.position, new Point(paths[currentPath].First.Value.position.X + right.X, paths[currentPath].First.Value.position.Y), status) && !status.Tiles[paths[currentPath].First.Value.position.X + right.X, paths[currentPath].First.Value.position.Y].IsOccupied)
+                {
+                    if (!firstStepAdded)
+                    {
+                        toSkip = new Node(paths[currentPath].First.Value.stepsFromStart + 1, Math.Abs(paths[currentPath].First.Value.position.Y - goalPosition), new Point(paths[currentPath].First.Value.position.X + right.X, paths[currentPath].First.Value.position.Y));
+                        paths[currentPath].AddFirst(toSkip);
+                        firstStepAdded = true;
+                    }
+                    else
+                    {
+                        paths.Add(new LinkedList<Node>());
+                        foreach (Node n in paths[currentPath])
+                        {
+                            paths[index].AddLast(n);
+                        }
+                        paths[index].AddFirst(new Node(paths[currentPath].First.Value.stepsFromStart + 1, Math.Abs(paths[currentPath].First.Value.position.Y - goalPosition), new Point(paths[currentPath].First.Value.position.X + right.X, paths[currentPath].First.Value.position.Y)));
+                        index++;
+                    }
+                }
+            }
+            if (direction != "forward" && IsWithinGameBoard(paths[currentPath].First.Value.position.X, paths[currentPath].First.Value.position.Y + wrongDirection.Y, status))
+            {
+                if (!WallBetween(paths[currentPath].First.Value.position, new Point(paths[currentPath].First.Value.position.X, paths[currentPath].First.Value.position.Y + wrongDirection.Y), status) && !status.Tiles[paths[currentPath].First.Value.position.X, paths[currentPath].First.Value.position.Y + wrongDirection.Y].IsOccupied)
+                {
+                    if (!firstStepAdded)
+                    {
+                        toSkip = new Node(paths[currentPath].First.Value.stepsFromStart + 1, Math.Abs(paths[currentPath].First.Value.position.Y + wrongDirection.Y - goalPosition), new Point(paths[currentPath].First.Value.position.X, paths[currentPath].First.Value.position.Y + wrongDirection.Y));
+                        paths[currentPath].AddFirst(toSkip);
+                        firstStepAdded = true;
+                    }
+                    else
+                    {
+                        paths.Add(new LinkedList<Node>());
+                        foreach (Node n in paths[currentPath])
+                        {
+                            paths[index].AddLast(n);
+                        }
+                        paths[index].AddFirst(new Node(paths[currentPath].First.Value.stepsFromStart + 1, Math.Abs(paths[currentPath].First.Value.position.Y + wrongDirection.Y - goalPosition), new Point(paths[currentPath].First.Value.position.X, paths[currentPath].First.Value.position.Y + wrongDirection.Y)));
+                        index++;
+                    }
+                }
+            }
+            if(paths.Count > 200)
+            {
+                JustWalk(status);
+            }
+            else if (paths[currentPath].First.Value.position.Y == goalPosition)
+            {
+                foreach (Node n in paths[currentPath])
+                {
+                    if (n != toSkip)
+                    {
+                        movelist.Add(new MoveAction(n.position.X,n.position.Y));
+                    }
+                }
+            }
+            else
+            {
+                if (!firstStepAdded)
+                {
+                    paths.RemoveAt(currentPath);
+                    index--;
+                }
+                FindPath(status);
+            }
+        }
+
+        private void JustWalk(GameData status)
+        {
+            bool ignoreRest = false;
+            if (IsWithinGameBoard(status.Self.Position.X + right.X, status.Self.Position.Y, status) && !status.Tiles[status.Self.Position.X + right.X, status.Self.Position.Y].IsOccupied)
+            {
+                if (!WallBetween(status.Self.Position, new Point(status.Self.Position.X + right.X, status.Self.Position.Y), status))
+                {
+                    movelist.Add(new MoveAction(status.Self.Position.X + right.X, status.Self.Position.Y));
+                    ignoreRest = true;
+                }
+            }
+            if (!ignoreRest && IsWithinGameBoard(status.Self.Position.X, status.Self.Position.Y + wrongDirection.Y, status) && !status.Tiles[status.Self.Position.X, status.Self.Position.Y + wrongDirection.Y].IsOccupied)
+            {
+                if (!WallBetween(status.Self.Position, new Point(status.Self.Position.X + wrongDirection.X, status.Self.Position.Y + wrongDirection.Y), status))
+                {
+                    movelist.Add(new MoveAction(status.Self.Position.X, status.Self.Position.Y + wrongDirection.Y));
+                    ignoreRest = true;
+                }
+            }
+            if (!ignoreRest && IsWithinGameBoard(status.Self.Position.X + left.X, status.Self.Position.Y, status) && !status.Tiles[status.Self.Position.X + left.X, status.Self.Position.Y].IsOccupied)
+            {
+                if (!WallBetween(status.Self.Position, new Point(status.Self.Position.X + left.X, status.Self.Position.Y), status))
+                {
+                    movelist.Add(new MoveAction(status.Self.Position.X + left.X, status.Self.Position.Y));
+                    ignoreRest = true;
+                }
+            }
+            if (!ignoreRest && IsWithinGameBoard(status.Self.Position.X, status.Self.Position.Y + optimalDirection.Y, status) && !status.Tiles[status.Self.Position.X, status.Self.Position.Y + optimalDirection.Y].IsOccupied)
+            {
+                if (!WallBetween(status.Self.Position, new Point(status.Self.Position.X + optimalDirection.X, status.Self.Position.Y + optimalDirection.Y), status))
+                {
+                    movelist.Add(new MoveAction(status.Self.Position.X, status.Self.Position.Y + optimalDirection.Y));
+                }
+            }
+        }
+
+        private bool WallBetween(Point start, Point end, GameData status)
+        {
+            if (start.X == end.X)
+            {
+                int num = Math.Min(start.Y, end.Y);
+                return status.HorizontalWall[start.X, num];
+            }
+            if (start.Y == end.Y)
+            {
+                int num2 = Math.Min(start.X, end.X);
+                return status.VerticalWall[num2, start.Y];
+            }
+            return true;
+        }
+
+        protected bool IsWithinGameBoard(int column, int row, GameData status)
+        {
+            if (0 <= column && column < status.Tiles.GetLength(0) && 0 <= row)
+            {
+                return row < status.Tiles.GetLength(1);
             }
             return false;
         }
 
-        private void GetGoal()
+        private void Initialize(GameData status)
         {
-            if (data.Self.Position.Y == 0)
+            paths = new List<LinkedList<Node>>();
+            movelist = new List<MoveAction>();
+            if (status.Self.Position.Y == 0)
             {
-                goalPosition = data.Tiles.GetLength(1);
-                optimalDirection = 1;
+                goalPosition = status.Tiles.GetLength(1)-1;
+                optimalDirection = new Point(0, 1);
+                wrongDirection = new Point(0, -1);
             }
-            else if (data.Self.Position.Y == data.Tiles.GetLength(1))
+            else
             {
                 goalPosition = 0;
-                optimalDirection = -1;
+                optimalDirection = new Point(0, -1);
+                wrongDirection = new Point(0, 1);
             }
-        }
-        private void Initalize()
-        {
-            GetGoal();
-            forward = data.Self.Position.Y + optimalDirection;
-            backward = data.Self.Position.Y - optimalDirection;
-            rightward = data.Self.Position.X + 1;
-            leftward = data.Self.Position.X - 1;
+            left = new Point(-1, 0);
+            right = new Point(1, 0);
+            enemyWalls = 100;
         }
     }
 }
